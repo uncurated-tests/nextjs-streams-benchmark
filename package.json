@@ -1,0 +1,16 @@
+{
+    "name": "streams-benchmarking",
+    "description": "A Next.js streams benchmark application",
+    "private": true,
+    "scripts": {
+        "build": "next build",
+        "start": "next start",
+        "install-old": "npm i next@14.2.0-canary.4",
+        "install-new": "npm i next@14.2.0-canary.32"
+    },
+    "dependencies": {
+        "next": "14.2.0-canary.32",
+        "react": "18.2.0",
+        "react-dom": "18.2.0"
+    }
+}
