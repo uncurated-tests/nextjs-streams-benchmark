@@ -16,25 +16,41 @@ const options = {
     log: {
         type: 'boolean',
         short: 'l',
-        default: false
+        default: true
     },
     iterations: {
         type: 'string',
         short: 'i',
-        default: '10'
+        default: '50'
     },
-    output: {
+    runCount: {
         type: 'string',
-        short: 'o'
+        short: 'r',
+        default: '100'
     }
+    // output: {
+    //     type: 'string',
+    //     short: 'o'
+    // }
 }
 
 const { values } = parseArgs({ options })
 
-function average (measures) {
+function findAverage (arr) {
     let ttl = 0;
-    measures.forEach(measure => ttl += measure.duration);
-    return ttl / measures.length;
+    arr.forEach(e => ttl += e);
+    return ttl / arr.length;
+}
+
+function findMedian(arr) {
+    arr.sort((a, b) => a - b);
+    const middleIndex = Math.floor(arr.length / 2);
+
+    if (arr.length % 2 === 0) {
+        return (arr[middleIndex - 1] + arr[middleIndex]) / 2;
+    } else {
+        return arr[middleIndex];
+    }
 }
 
 async function run () {
@@ -65,37 +81,40 @@ async function warmup () {
 
 async function bench () {
     const runs = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < parseInt(values.runCount); i++) {
         runs.push(run());
     }
     await Promise.all(runs);
 
     const measures = performance.getEntriesByName('streaming-duration');
-
-    const averageDuration = average(measures);
+    const durations = measures.map(measure => measure.duration)
+    const averageDuration = findAverage(durations);
+    const medianDuration = findMedian(durations);
 
     clear();
 
-    return { endpoint: values.endpoint, average_duration: averageDuration };
+    return {average: averageDuration, median: medianDuration};
 }
 
 if (values.log) {
     console.log('Benchmarking Next.js version', packageJSON.dependencies.next)
     console.log('Endpoint', values.endpoint)
+    console.log('Iterations', values.iterations)
+    console.log('Run Count', values.runCount)
 }
 await warmup();
-const output = values.output ?? `nextjs-streams-benchmark-${values.endpoint}-${Date.now()}`;
+// const output = values.output ?? `nextjs-streams-benchmark-${values.endpoint}-${Date.now()}`;
 const results = [];
+
 for (let i = 0; i < parseInt(values.iterations); i++) {
     const result = await bench();
     results.push(result);
 }
 
-let t = 0;
-results.forEach(({ average_duration }) => t += average_duration);
-const outString = `Average duration for ${values.endpoint} after ${values.iterations} iterations of 100 runs: ${t/results.length}ms`;
+const average = findAverage(results.map(result => result.average));
+const median = findAverage(results.map(result => result.median));
+
 if (values.log) { 
-    console.log(outString)
-} else {
-    fs.writeFileSync(output, outString);
+    console.log('Average', average);
+    console.log('Median', median);
 }
